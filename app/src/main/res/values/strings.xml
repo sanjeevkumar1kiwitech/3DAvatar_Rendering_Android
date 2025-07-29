@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Avatar3D</string>
+    <string name="loading">Loading Avatar...</string>
+    <string name="reset_view">Reset View</string>
+    <string name="animate">Animate</string>
+    <string name="change_color">Color</string>
+    <string name="touch_instructions">Touch and drag to rotate • Pinch to zoom</string>
+</resources>
