@@ -38,6 +38,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var materialProvider: MaterialProvider
     private lateinit var entityManager: EntityManager
     private var filamentAsset: FilamentAsset? = null
+    private var animator: Animator? = null
+    private var animationStartTime: Long = 0L
 
     // Camera control variables
     private var rotationX = 0f
@@ -59,6 +61,25 @@ class MainActivity : AppCompatActivity() {
                         clear = true
                         clearColor = floatArrayOf(0.2f, 0.2f, 0.3f, 1.0f)
                     })
+                    // Update animation
+                    filamentAsset?.let { asset ->
+                        animator?.let { anim ->
+                            if (anim.animationCount > 0) {
+                                if (animationStartTime == 0L) {
+                                    animationStartTime = frameTimeNanos
+                                }
+                                val elapsedTimeSeconds = (frameTimeNanos - animationStartTime) / 1_000_000_000.0f
+                                try {
+                                    anim.applyAnimation(1, elapsedTimeSeconds)
+                                    anim.updateBoneMatrices()
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error applying animation: ${e.message}", e)
+                                }
+                            } else {
+                                Log.w(TAG, "No animations available to play")
+                            }
+                        } ?: Log.w(TAG, "Animator is null")
+                    }
                     renderer.render(view)
                     renderer.endFrame()
                 }
@@ -142,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         assetLoader = AssetLoader(engine, materialProvider, entityManager)
 
         // Load GLB model
-        loadGlbModel("avatar2.glb")
+        loadGlbModel("zebra5.glb")
 
         // Set up gesture detectors
         setupGestures()
@@ -227,6 +248,23 @@ class MainActivity : AppCompatActivity() {
             filamentAsset?.let { asset ->
                 ResourceLoader(engine).loadResources(asset)
 
+                // Initialize animator from FilamentInstance
+                val instance = asset.getInstance()
+                animator = instance?.getAnimator()
+                if (animator == null) {
+                    Log.e(TAG, "Animator is null for $fileName")
+                    return@let
+                }
+
+                if (animator?.animationCount ?: 0 > 0) {
+                    Log.d(TAG, "Found ${animator?.animationCount} animations")
+                    for (i in 0 until animator!!.animationCount) {
+                        Log.d(TAG, "Animation $i: duration = ${animator!!.getAnimationDuration(i)} seconds")
+                    }
+                } else {
+                    Log.w(TAG, "No animations found in $fileName")
+                }
+
                 val bounds = asset.boundingBox
                 val center = bounds.center
                 val halfExtent = bounds.halfExtent
@@ -256,8 +294,8 @@ class MainActivity : AppCompatActivity() {
                 android.opengl.Matrix.translateM(transform, 0, translation[0], translation[1], translation[2])
 
                 val transformManager = engine.transformManager
-                val instance = transformManager.getInstance(asset.root)
-                transformManager.setTransform(instance, transform)
+                val instanceTransform = transformManager.getInstance(asset.root)
+                transformManager.setTransform(instanceTransform, transform)
 
                 asset.releaseSourceData()
                 scene.addEntities(asset.entities)
@@ -273,6 +311,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        animationStartTime = 0L // Reset animation time
         choreographer.postFrameCallback(frameCallback)
         Log.d(TAG, "Rendering loop started")
     }
@@ -288,12 +327,12 @@ class MainActivity : AppCompatActivity() {
         try {
             filamentAsset?.let { asset ->
                 scene.removeEntities(asset.entities)
+                assetLoader.destroyAsset(asset)
             }
             swapChain?.let { engine.destroySwapChain(it) }
             engine.destroySkybox(skybox)
             engine.destroyRenderer(renderer)
             engine.destroyView(view)
-            engine.destroyScene(scene)
             engine.destroyCameraComponent(camera.entity)
             engine.destroyEntity(camera.entity)
             (materialProvider as? UbershaderProvider)?.destroyMaterials()
