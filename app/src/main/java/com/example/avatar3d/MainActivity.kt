@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 val elapsedTimeSeconds = (frameTimeNanos - animationStartTime) / 1_000_000_000.0f
                                 try {
-                                    anim.applyAnimation(1, elapsedTimeSeconds)
+                                    anim.applyAnimation(0, elapsedTimeSeconds)
                                     anim.updateBoneMatrices()
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Error applying animation: ${e.message}", e)
@@ -163,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         assetLoader = AssetLoader(engine, materialProvider, entityManager)
 
         // Load GLB model
-        loadGlbModel("zebra5.glb")
+        loadGlbModel("talking.glb")
 
         // Set up gesture detectors
         setupGestures()
